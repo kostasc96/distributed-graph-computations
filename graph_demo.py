@@ -12,6 +12,7 @@ import time
 spark = SparkSession.builder.appName("Project1").getOrCreate()
 
 
+
 vertices = spark.createDataFrame([('1', 'China'), 
                                   ('2', 'South Korea'),
                                   ('3', 'Japan'),
@@ -92,7 +93,7 @@ def algorithm1(i,g):
         cached_new_vertices = AM.getCachedDataFrame(new_vertices)
         g = GraphFrame(cached_new_vertices, g.edges)
         i += 1
-        #g.vertices.show()
+        g.vertices.show()
         g.vertices.createOrReplaceTempView("temp_table")
         if(spark.sql("SELECT * from temp_table where value = -1").count() == 0):
             final_df = g.vertices
@@ -102,15 +103,13 @@ def algorithm1(i,g):
 
 def algorithm2(i,g):
     while(True):
-        h = g.filterVertices("value == -1")
-        aggregates = h.aggregateMessages(F.collect_set(AM.msg).alias("agg"),sendToDst=AM.src["id"])
-        res = aggregates.withColumn("newValue", getid_maximum_udf("id", "agg", lit(i))).drop("agg")
+        aggregates = g.aggregateMessages(F.collect_set(AM.msg).alias("agg"),sendToDst=F.when(AM.src['value'] == -1, AM.src["id"]))
 
-        new_vertices = g.vertices.join(res, on="id", how="left_outer").withColumn('max_by_rows', greatest('value', 'newValue')).drop("value","newValue").withColumnRenamed("max_by_rows","value")
+        new_vertices = g.vertices.join(aggregates, on="id", how="left_outer").withColumn("newValue", getid_maximum_udf2("id", "agg", lit(i),"value")).drop("agg").withColumn('max_by_rows', greatest('value', 'newValue')).drop("value","newValue").withColumnRenamed("max_by_rows","value")
         cached_new_vertices = AM.getCachedDataFrame(new_vertices)
         g = GraphFrame(cached_new_vertices, g.edges)
         i += 1
-        #g.vertices.show()
+        g.vertices.show()
         if(g.filterVertices("value == -1").dropIsolatedVertices().edges.count() == 0):
             final_df = g.vertices
             final_df = final_df.withColumn("value", F.when(final_df["value"] == -1, i).otherwise(final_df["value"]))
