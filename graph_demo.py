@@ -25,6 +25,8 @@ vertices = spark.createDataFrame([('1', 'China'),
                                   ('10', 'Finland')],
                                   ['id', 'country'])
 
+# vertices.show()
+
 
 vertices = vertices.withColumn("value",lit(-1))
 
@@ -50,6 +52,8 @@ edges = spark.createDataFrame([('1','2'),
                                 ('9','10'),
                                 ('10','9')],
                                 ['src','dst'])
+
+# edges.show()
 
 
 cached_vertices = AM.getCachedDataFrame(vertices)
